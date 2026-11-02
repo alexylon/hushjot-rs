@@ -17,4 +17,5 @@ First release. The emulator journey runs against the app's live rules.
   - A local-first vault: notes, folders, history, shares and search.
   - The sync engine, with conflict copies, metadata rebase, limits and pauses.
   - Offline launch: `resume` and unlocking work without the network once the device has been online.
+- **Integration guide:** closing the app without losing edits or writing plaintext, and opt-in rules for AI agents.
 - **Examples:** `quickstart`, and `mini_editor`, a terminal editor covering the whole SDK (walkthrough in `docs/mini-editor.md`).
