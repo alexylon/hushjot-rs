@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Update dependencies to the latest versions: aes-gcm 0.11, argon2 0.6, hkdf 0.13 and sha2 0.11 (RustCrypto's digest 0.11 generation), getrandom 0.4, base64 0.23 and rusqlite 0.41. No change to the format or the API.
+
 ## 0.1.0 (unreleased)
 
 First release. The emulator journey runs against the app's live rules.

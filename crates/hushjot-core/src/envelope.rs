@@ -44,8 +44,8 @@
 
 use std::fmt;
 
-use aes_gcm::aead::{Aead, KeyInit, Payload};
-use aes_gcm::{Aes256Gcm, Nonce};
+use aes_gcm::aead::{Aead, KeyInit, Nonce, Payload};
+use aes_gcm::Aes256Gcm;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::bytes::random_bytes;
@@ -170,6 +170,11 @@ fn aad_for(head: &[u8], context: Option<&str>) -> Vec<u8> {
     aad
 }
 
+/// Callers pass exactly `NONCE_BYTES`, so the conversion cannot fail.
+fn nonce_of(bytes: &[u8]) -> Nonce<Aes256Gcm> {
+    Nonce::<Aes256Gcm>::try_from(bytes).expect("a nonce is always NONCE_BYTES long")
+}
+
 /// Seal `plaintext` under `key`.
 ///
 /// With a `context` the envelope is version 2 and opens only under that same
@@ -180,7 +185,7 @@ pub fn seal(key: &Key, plaintext: &[u8], context: Option<&str>) -> Vec<u8> {
     let nonce = random_bytes(NONCE_BYTES);
     let ciphertext = key
         .cipher()
-        .encrypt(Nonce::from_slice(&nonce), Payload { msg: plaintext, aad: &aad_for(&head, context) })
+        .encrypt(&nonce_of(&nonce), Payload { msg: plaintext, aad: &aad_for(&head, context) })
         .expect("AES-GCM encryption cannot fail for in-memory buffers");
 
     let mut out = Vec::with_capacity(HEADER_BYTES + ciphertext.len());
@@ -215,8 +220,8 @@ pub fn open(key: &Key, envelope: &[u8], context: Option<&str>) -> Result<Vec<u8>
     // A version-1 envelope was sealed with the header alone, whatever the
     // caller now expects of it.
     let aad = aad_for(&envelope[..2], if bound { context } else { None });
-    let nonce = Nonce::from_slice(&envelope[2..HEADER_BYTES]);
-    key.cipher().decrypt(nonce, Payload { msg: &envelope[HEADER_BYTES..], aad: &aad }).map_err(|_| DecryptError)
+    let nonce = nonce_of(&envelope[2..HEADER_BYTES]);
+    key.cipher().decrypt(&nonce, Payload { msg: &envelope[HEADER_BYTES..], aad: &aad }).map_err(|_| DecryptError)
 }
 
 /// Seal UTF-8 text.

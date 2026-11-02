@@ -38,7 +38,7 @@ pub fn from_base64_url(text: &str) -> Result<Vec<u8>, FormatError> {
 /// fallback for a nonce or a key, so this does not try to find one.
 pub fn random_bytes(n: usize) -> Vec<u8> {
     let mut out = vec![0u8; n];
-    getrandom::getrandom(&mut out).expect("the operating system's random number generator failed");
+    getrandom::fill(&mut out).expect("the operating system's random number generator failed");
     out
 }
 
