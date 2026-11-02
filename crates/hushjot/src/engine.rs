@@ -875,6 +875,13 @@ impl Engine {
             return Ok(());
         }
 
+        // From here on the row as it is now, not as the push read it before the
+        // network: an edit made meanwhile isn't taken for an unchanged body.
+        let Some(current) = self.vault.store.note(id)? else {
+            return self.vault.store.dequeue(id, Some(entry.token));
+        };
+        let raw = &current;
+
         // Only metadata changed here: adopt theirs, lay our pin and folder over it.
         let body_unchanged = match (&raw.body, &state.body_seal) {
             (Some(body), Some(seal)) => seal_id_of(body).as_deref() == Some(seal.as_str()),

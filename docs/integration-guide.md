@@ -91,6 +91,7 @@ vault.lock();
 - **A final save almost never fails.** `update` touches only the local store, never the network. It fails at close for two reasons:
   - `Error::NotFound`: the note was deleted on another device while it was open. Save the text with `notes().create(&text, folder_id)`, using `None` if the folder is gone too, and tell the user "This note was deleted elsewhere. Your text was saved as a new note."
   - `Error::Store`: the store cannot be written, for example a full disk.
+- **With `update_if_unchanged`, a final save can also be refused.** It reports a deleted note as `ConditionalUpdate::Deleted`, not `Error::NotFound`. Handle it the same way. `Changed` means another device's edit arrived: save the text as a new note too, and say "This note was changed elsewhere. Your text was saved as a new note."
 - **Never quit silently on a failed save.** Keep the window open and offer "Retry", "Copy text" and "Quit without saving". Never fall back to writing the text to a file.
 
 ## While syncing

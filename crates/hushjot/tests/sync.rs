@@ -621,3 +621,40 @@ async fn a_pull_never_lands_between_an_edits_read_and_write() {
         a.vault.notes().list().unwrap().iter().map(|n| a.vault.notes().get(&n.id).unwrap().content).collect();
     assert!(texts.contains(&"theirs".to_string()) && texts.contains(&"mine".to_string()), "{texts:?}");
 }
+
+/// A text edit made while a pin's push is on the network, which then meets
+/// another device's edit: the conflict is settled from the note as it is now,
+/// so the new text gets a copy rather than being taken for an unchanged body.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_edit_made_during_a_conflicting_push_is_kept() {
+    let server = FakeServer::new();
+    let (store, reached, go) = PausingStore::new();
+    let a = device_with_store(&server, store.clone()).await;
+    let b = device(&server).await;
+    let id = a.vault.notes().create("draft", None).unwrap();
+    a.vault.sync_now().await;
+    b.vault.sync_now().await;
+    b.vault.notes().update(&id, "theirs").unwrap();
+    b.vault.sync_now().await;
+
+    // A's push of a pin reads the note, then stops before reaching the server.
+    a.vault.notes().set_pinned(&id, true).unwrap();
+    *store.armed.lock().unwrap() = Some(id.clone());
+    let pusher = a.vault.clone();
+    let push = tokio::spawn(async move { pusher.sync_now().await });
+    let reached = tokio::task::spawn_blocking(move || reached.recv_timeout(support::PAUSE_LIMIT)).await.unwrap();
+    assert!(reached.is_ok(), "the push never read the note");
+
+    // Meanwhile the text changes here.
+    assert_eq!(a.vault.notes().update_if_unchanged(&id, "draft", "mine").unwrap(), ConditionalUpdate::Written);
+    go.send(()).unwrap();
+    push.await.unwrap();
+
+    for _ in 0..3 {
+        a.vault.sync_now().await;
+        b.vault.sync_now().await;
+    }
+    let texts: Vec<String> =
+        a.vault.notes().list().unwrap().iter().map(|n| a.vault.notes().get(&n.id).unwrap().content).collect();
+    assert!(texts.contains(&"theirs".to_string()) && texts.contains(&"mine".to_string()), "{texts:?}");
+}
