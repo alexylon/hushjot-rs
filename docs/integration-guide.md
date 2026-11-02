@@ -77,6 +77,22 @@ vault.notes().update(&id, &text)?;                 // call on your editor's save
 - **Deleting is recoverable.** `notes().recently_deleted()` and `notes().undelete(id)` give you a Trash view.
 - **Deleting a folder deletes its contents.** Warn the user first with `folders().contents(id)`, which returns the subfolder and note counts.
 
+## Closing the app
+
+Save, sync, then lock:
+
+```rust
+if let Err(e) = save_open_notes(&vault) { /* keep the window open, see below */ }
+vault.sync_now().await;  // best effort: unsynced changes stay queued in the store
+vault.lock();
+```
+
+- **The store is your crash backup.** Every debounced `update` is already sealed on disk, and History keeps a version per editing session. Turn off your editor's own backups, recovery folder and autosave for vault notes: they would hold plaintext (rule 2 below).
+- **A final save almost never fails.** `update` touches only the local store, never the network. It fails at close for two reasons:
+  - `Error::NotFound`: the note was deleted on another device while it was open. Save the text with `notes().create(&text, folder_id)`, using `None` if the folder is gone too, and tell the user "This note was deleted elsewhere. Your text was saved as a new note."
+  - `Error::Store`: the store cannot be written, for example a full disk.
+- **Never quit silently on a failed save.** Keep the window open and offer "Retry", "Copy text" and "Quit without saving". Never fall back to writing the text to a file.
+
 ## While syncing
 
 Subscribe once and update your UI from the events:
@@ -118,6 +134,10 @@ HushJot's promise is that only the user's devices can read their notes. Inside y
 
    The `SqliteStore` holds only ciphertext, and the search index lives in memory. Keep it that way.
 3. **Never send note content to a server.** That includes your own server, an AI service, or a link previewer. If you add such a feature, make it explicit and opt-in, and say plainly what leaves the device.
+   - **Agents count.** A local CLI, MCP server or automation bridge that lets an AI agent read vault notes sends their text to the agent's model provider.
+   - Give vault notes their own setting, such as "Let agents read HushJot notes", **off by default**, and separate from turning the bridge on. While it is off, vault notes are invisible to agents, as if the vault were locked.
+   - Ideally let the user limit it to chosen folders. HushJot's own MCP server does the same: it refuses to start until `hushjot mcp enable` is run, and `hushjot scope` confines it to folders.
+   - Do not let agents delete vault notes. Route their edits through `notes().update()`, so History can undo them.
 4. **Lock on request.** Offer "Lock". Call `vault.lock()` and drop your copies of open text.
 5. **Do not paste user secrets into issue reports.** The SDK's errors never contain them, so an error string is safe to report.
 

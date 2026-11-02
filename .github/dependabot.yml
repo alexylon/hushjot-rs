@@ -3,6 +3,15 @@ updates:
   - package-ecosystem: cargo
     directory: /
     schedule: { interval: weekly }
+    groups:
+      cargo:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    groups:
+      actions:
+        patterns: ["*"]
+    ignore:
+      # The msrv job pins the toolchain to rust-version in Cargo.toml.
+      - dependency-name: dtolnay/rust-toolchain
