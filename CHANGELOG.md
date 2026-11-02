@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **`hushjot`:**
+  - `Notes::update_if_unchanged` writes a note's text only while it still holds the text the editor last read, as one step with the sync, and returns `ConditionalUpdate::Changed` (or `Deleted`) otherwise. An editor holding unsaved text while another device's edit arrives no longer has to choose between writing over it and losing its own.
+  - Fixed: a pull that landed between a local write's read and its write (an edit, pin, move, delete, restore, undelete or a folder's delete) was overwritten unseen. Those writes, and the sync's application of a pulled note and settling of a conflict, now hold one write guard; the vault's write helpers take only rows read under it.
 - Update dependencies to the latest versions: aes-gcm 0.11, argon2 0.6, hkdf 0.13 and sha2 0.11 (RustCrypto's digest 0.11 generation), getrandom 0.4, base64 0.23 and rusqlite 0.41. No change to the format or the API.
 
 ## 0.1.0 (unreleased)
